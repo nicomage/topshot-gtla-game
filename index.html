@@ -506,24 +506,40 @@
 <div class="toast" id="toast">Copied to clipboard!</div>
 
 <script>
-// ─── MOCK DATA ────────────────────────────────────────────────────────────────
-// momentId will be used to build the Top Shot marketplace URL
-const MOMENTS = [
-  { player:"LeBron James",    team:"Los Angeles Lakers",     play:"Slam Dunk",       set:"Series 2 Base Set", serial:1249, circ:4999,  scarcity:"rare",      lowestAsk:45,   momentId:"some-id-1" },
-  { player:"Stephen Curry",   team:"Golden State Warriors",  play:"3-Pointer",       set:"Hoops S3",          serial:3,    circ:499,   scarcity:"legendary", lowestAsk:1200, momentId:"some-id-2" },
-  { player:"Giannis A.",      team:"Milwaukee Bucks",        play:"Monster Block",   set:"Base Set S4",       serial:7811, circ:15000, scarcity:"fandom",    lowestAsk:4,    momentId:"some-id-3" },
-  { player:"Nikola Jokić",    team:"Denver Nuggets",         play:"Triple-Double",   set:"Run It Back S2",    serial:52,   circ:249,   scarcity:"legendary", lowestAsk:680,  momentId:"some-id-4" },
-  { player:"Ja Morant",       team:"Memphis Grizzlies",      play:"Alley-Oop",       set:"2023-24 Base Set",  serial:2204, circ:4999,  scarcity:"common",    lowestAsk:8,    momentId:"some-id-5" },
-  { player:"Kevin Durant",    team:"Phoenix Suns",           play:"Fadeaway Jumper", set:"Metallic Gold LE",  serial:7,    circ:99,    scarcity:"legendary", lowestAsk:3400, momentId:"some-id-6" },
-  { player:"Luka Dončić",     team:"Dallas Mavericks",       play:"Step-Back 3",     set:"Series 3 Base Set", serial:892,  circ:9999,  scarcity:"rare",      lowestAsk:95,   momentId:"some-id-7" },
-  { player:"Anthony Edwards", team:"Minnesota Timberwolves", play:"Posterizer Dunk", set:"2023-24 Base",      serial:4423, circ:15000, scarcity:"common",    lowestAsk:6,    momentId:"some-id-8" },
-  { player:"Joel Embiid",     team:"Philadelphia 76ers",     play:"Post Move",       set:"Hustle & Show",     serial:178,  circ:999,   scarcity:"rare",      lowestAsk:220,  momentId:"some-id-9" },
-  { player:"Devin Booker",    team:"Phoenix Suns",           play:"Clutch Pull-Up",  set:"Playoff Moments",   serial:64,   circ:499,   scarcity:"legendary", lowestAsk:890,  momentId:"some-id-10" },
+// ─── DATA — fetched live from Top Shot via Vercel proxy ───────────────────────
+// Falls back to curated data if the API is unavailable.
+
+const FALLBACK_MOMENTS = [
+  { player:"LeBron James",    team:"Los Angeles Lakers",     play:"Slam Dunk",       set:"Series 2 Base Set", serial:1249, circ:4999,  scarcity:"rare",      lowestAsk:45,   imageUrl:null, momentUrl:"https://nbatopshot.com" },
+  { player:"Stephen Curry",   team:"Golden State Warriors",  play:"3-Pointer",       set:"Hoops S3",          serial:3,    circ:499,   scarcity:"legendary", lowestAsk:1200, imageUrl:null, momentUrl:"https://nbatopshot.com" },
+  { player:"Giannis A.",      team:"Milwaukee Bucks",        play:"Monster Block",   set:"Base Set S4",       serial:7811, circ:15000, scarcity:"fandom",    lowestAsk:4,    imageUrl:null, momentUrl:"https://nbatopshot.com" },
+  { player:"Nikola Jokić",    team:"Denver Nuggets",         play:"Triple-Double",   set:"Run It Back S2",    serial:52,   circ:249,   scarcity:"legendary", lowestAsk:680,  imageUrl:null, momentUrl:"https://nbatopshot.com" },
+  { player:"Ja Morant",       team:"Memphis Grizzlies",      play:"Alley-Oop",       set:"2023-24 Base Set",  serial:2204, circ:4999,  scarcity:"common",    lowestAsk:8,    imageUrl:null, momentUrl:"https://nbatopshot.com" },
+  { player:"Kevin Durant",    team:"Phoenix Suns",           play:"Fadeaway Jumper", set:"Metallic Gold LE",  serial:7,    circ:99,    scarcity:"legendary", lowestAsk:3400, imageUrl:null, momentUrl:"https://nbatopshot.com" },
+  { player:"Luka Dončić",     team:"Dallas Mavericks",       play:"Step-Back 3",     set:"Series 3 Base Set", serial:892,  circ:9999,  scarcity:"rare",      lowestAsk:95,   imageUrl:null, momentUrl:"https://nbatopshot.com" },
+  { player:"Anthony Edwards", team:"Minnesota Timberwolves", play:"Posterizer Dunk", set:"2023-24 Base",      serial:4423, circ:15000, scarcity:"common",    lowestAsk:6,    imageUrl:null, momentUrl:"https://nbatopshot.com" },
+  { player:"Joel Embiid",     team:"Philadelphia 76ers",     play:"Post Move",       set:"Hustle & Show",     serial:178,  circ:999,   scarcity:"rare",      lowestAsk:220,  imageUrl:null, momentUrl:"https://nbatopshot.com" },
+  { player:"Devin Booker",    team:"Phoenix Suns",           play:"Clutch Pull-Up",  set:"Playoff Moments",   serial:64,   circ:499,   scarcity:"legendary", lowestAsk:890,  imageUrl:null, momentUrl:"https://nbatopshot.com" },
 ];
 
-function momentURL(m) {
-  // Will be replaced with real Top Shot URL pattern once API is connected
-  return `https://nbatopshot.com/moment/${m.momentId}`;
+let LIVE_MOMENTS = null;
+function momentURL(m) { return m.momentUrl || 'https://nbatopshot.com'; }
+
+async function fetchMoments() {
+  try {
+    const res = await fetch('/api/moments');
+    if (!res.ok) throw new Error('proxy ' + res.status);
+    const json = await res.json();
+    if (json.moments && json.moments.length >= 10) {
+      LIVE_MOMENTS = json.moments;
+      return true;
+    }
+    throw new Error('not enough moments');
+  } catch(e) {
+    console.warn('Live fetch failed, using fallback:', e.message);
+    LIVE_MOMENTS = FALLBACK_MOMENTS;
+    return false;
+  }
 }
 
 // ─── CONSTANTS ────────────────────────────────────────────────────────────────
@@ -598,10 +614,19 @@ function showScreen(id){
 function goHome(){ showScreen('screen-start'); }
 
 // ─── GAME ─────────────────────────────────────────────────────────────────────
-function startGame(){
+async function startGame(){
+  // Show loading state on the button
+  const btn = document.querySelector('#screen-start .btn-primary');
+  if (btn) { btn.textContent = 'LOADING…'; btn.disabled = true; }
+
+  // Fetch live data (or use fallback)
+  await fetchMoments();
+
+  if (btn) { btn.textContent = 'PLAY NOW'; btn.disabled = false; }
+
   G.round=0; G.score=0; G.answers=[];
   G.streak=0; G.bestStreak=0;
-  G.deck=shuffle(MOMENTS);
+  G.deck = shuffle(LIVE_MOMENTS).slice(0, 10);
   buildDots(); showScreen('screen-game'); nextRound();
 }
 
@@ -641,6 +666,16 @@ function renderMoment(m){
   set('moment-set',    m.set,     'textContent');
   set('moment-play',   m.play,    'textContent');
   set('round-eye',     'ROUND '+(G.round+1)+' / 10', 'textContent');
+
+  // Show real image if available, otherwise keep placeholder
+  const visual = $('moment-visual');
+  if (visual) {
+    if (m.imageUrl) {
+      visual.innerHTML = `<img src="${m.imageUrl}" alt="${m.player}" loading="eager" onerror="this.parentNode.innerHTML='<div class=\\'moment-visual-placeholder\\'>IMAGE<br>TOP SHOT MOMENT<span>Could not load</span></div>'">`;
+    } else {
+      visual.innerHTML = `<div class="moment-visual-placeholder">IMAGE<br>TOP SHOT MOMENT<span>Will be replaced by real Top Shot content</span></div>`;
+    }
+  }
 }
 
 function renderChoices(correct){
